@@ -42,108 +42,72 @@ def safe_filename(name):
 # Cache resource for expensive model/scaler loading
 @st.cache_resource(ttl=3600) # Cache for 1 hour
 def download_and_load_model(target_column_name):
-    """Downloads and loads a specific Keras model from Google Drive."""
+    """Loads a specific Keras model from the models directory."""
     safe_name = safe_filename(target_column_name)
     model_filename = MODEL_FILENAME_PATTERN.format(safe_name=safe_name)
-    local_model_path = f"./{model_filename}" # Save locally in the container
-
-    # Try loading locally first (if already downloaded/cached by Streamlit)
-    if os.path.exists(local_model_path):
+    
+    # First check in the models directory
+    model_path_in_folder = os.path.join("models", model_filename)
+    local_model_path = f"./{model_filename}"  # Fallback to root directory
+    
+    # Check if model exists in the models folder
+    if os.path.exists(model_path_in_folder):
         try:
-            print(f"Loading cached model: {local_model_path}")
-            model = load_model(local_model_path)
-            print("Model loaded successfully from local cache.")
+            print(f"Loading model from models directory: {model_path_in_folder}")
+            model = load_model(model_path_in_folder)
+            print("Model loaded successfully from models directory.")
             return model
         except Exception as e:
-            print(f"Failed to load cached model {local_model_path}: {e}. Re-downloading...")
-
-    # Construct Google Drive download URL using gdown format
-    # Note: gdown needs the FOLDER ID for listing/downloading specific files within it.
-    # A direct file ID approach might also work if you have those IDs.
-    # This simplified approach assumes gdown can handle folder listing or direct file links.
-    # A more robust approach might involve listing files via gdown and finding the correct one.
-    # For simplicity here, we assume direct download or cached file exists.
-    # **This part might need adjustment based on how gdown handles folder contents**
-    # A common pattern is to get individual file IDs, but that's harder to manage.
-    # Let's try a direct approach first, relying on cache/prior existence.
-    # If direct download by name isn't feasible via gdown folder ID,
-    # you might need to get individual file IDs.
-
-    # Placeholder for a more robust download logic if needed:
-    # file_id = find_file_id_in_gdrive_folder(GDRIVE_FOLDER_ID, model_filename)
-    # if file_id:
-    #     gdown.download(id=file_id, output=local_model_path, quiet=False)
-    # else:
-    #     st.error(f"Model file '{model_filename}' not found in GDrive folder.")
-    #     return None
-
-    # Simplified: Assume file must exist locally after potential download (relying on cache)
-    # If you manually place models or if cache works across restarts
-    if not os.path.exists(local_model_path):
-         st.error(f"Model file '{local_model_path}' not found locally and download from GDrive folder ID is complex/not implemented directly here. Please ensure models are accessible.")
-         # Try a placeholder gdown command - THIS MIGHT FAIL depending on gdown version and folder permissions
-         try:
-             print(f"Attempting to download model {model_filename} using gdown (may require file ID)...")
-             # THIS IS A GUESS - gdown usually needs a file ID or direct link
-             # Replace with actual file ID if you have it: gdown.download(id=YOUR_FILE_ID, ...)
-             # Or manually ensure files are present in the deployment environment
-             st.warning(f"Attempting simplified GDrive download for {model_filename}. This might fail. Consider providing direct file IDs or placing files in the repo if small enough.")
-             # Example using folder ID - likely needs specific file ID:
-             # gdown.download(id=GDRIVE_FOLDER_ID, output=local_model_path, quiet=False, fuzzy=True) # Fuzzy might help find by name
-             raise NotImplementedError("Direct download by name from folder ID is unreliable with gdown. Use file IDs or alternative storage.")
-
-         except Exception as gd_err:
-             st.error(f"Failed to download/find model {model_filename} using gdown: {gd_err}")
-             return None
-
-
-    try:
-        print(f"Loading model: {local_model_path}")
-        model = load_model(local_model_path)
-        print("Model loaded successfully.")
-        return model
-    except Exception as e:
-        st.error(f"Error loading Keras model from {local_model_path}: {e}")
-        return None
+            print(f"Failed to load model from models directory {model_path_in_folder}: {e}. Trying root directory...")
+    
+    # Try loading from root directory as fallback (if already downloaded/cached by Streamlit)
+    if os.path.exists(local_model_path):
+        try:
+            print(f"Loading model from root directory: {local_model_path}")
+            model = load_model(local_model_path)
+            print("Model loaded successfully from root directory.")
+            return model
+        except Exception as e:
+            print(f"Failed to load model from root directory {local_model_path}: {e}.")
+    
+    # If we got here, we couldn't find or load the model
+    st.error(f"Model file '{model_filename}' not found in the models directory or root directory. Please ensure the model file exists in the 'models' folder of your repository.")
+    return None
 
 
 @st.cache_resource(ttl=3600)
 def download_and_load_scaler(target_column_name):
-    """Downloads and loads a specific joblib scaler from Google Drive."""
+    """Loads a specific joblib scaler from the models directory."""
     safe_name = safe_filename(target_column_name)
     scaler_filename = SCALER_FILENAME_PATTERN.format(safe_name=safe_name)
-    local_scaler_path = f"./{scaler_filename}"
-
-    # Try loading locally first
-    if os.path.exists(local_scaler_path):
+    
+    # First check in the models directory
+    scaler_path_in_folder = os.path.join("models", scaler_filename)
+    local_scaler_path = f"./{scaler_filename}"  # Fallback to root directory
+    
+    # Check if scaler exists in the models folder
+    if os.path.exists(scaler_path_in_folder):
         try:
-            print(f"Loading cached scaler: {local_scaler_path}")
-            scaler = joblib.load(local_scaler_path)
-            print("Scaler loaded successfully from local cache.")
+            print(f"Loading scaler from models directory: {scaler_path_in_folder}")
+            scaler = joblib.load(scaler_path_in_folder)
+            print("Scaler loaded successfully from models directory.")
             return scaler
         except Exception as e:
-            print(f"Failed to load cached scaler {local_scaler_path}: {e}. Re-downloading...")
-
-    # Simplified download logic (same caveats as model download)
-    if not os.path.exists(local_scaler_path):
-        st.error(f"Scaler file '{local_scaler_path}' not found locally. Download from GDrive folder ID not implemented directly. Ensure files are accessible.")
-        # Placeholder download attempt (likely needs specific file ID)
+            print(f"Failed to load scaler from models directory {scaler_path_in_folder}: {e}. Trying root directory...")
+    
+    # Try loading from root directory as fallback (if already downloaded/cached by Streamlit)
+    if os.path.exists(local_scaler_path):
         try:
-            print(f"Attempting to download scaler {scaler_filename} using gdown (may require file ID)...")
-            st.warning(f"Attempting simplified GDrive download for {scaler_filename}. This might fail. Use file IDs or alternative storage.")
-            raise NotImplementedError("Direct download by name from folder ID is unreliable with gdown. Use file IDs or alternative storage.")
-        except Exception as gd_err:
-             st.error(f"Failed to download/find scaler {scaler_filename} using gdown: {gd_err}")
-             return None
-
-    try:
-        print(f"Loading scaler: {local_scaler_path}")
-        scaler = joblib.load(local_scaler_path)
-        print("Scaler loaded successfully.")
-        return scaler
-    except Exception as e:
-        st.error(f"Error loading Scaler from {local_scaler_path}: {e}")
-        return None
+            print(f"Loading scaler from root directory: {local_scaler_path}")
+            scaler = joblib.load(local_scaler_path)
+            print("Scaler loaded successfully from root directory.")
+            return scaler
+        except Exception as e:
+            print(f"Failed to load scaler from root directory {local_scaler_path}: {e}.")
+    
+    # If we got here, we couldn't find or load the scaler
+    st.error(f"Scaler file '{scaler_filename}' not found in the models directory or root directory. Please ensure the scaler file exists in the 'models' folder of your repository.")
+    return None
 
 # Cache data loading
 @st.cache_data(ttl=3600) # Cache data for 1 hour
