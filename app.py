@@ -127,7 +127,7 @@ def load_data(filepath):
         st.error(f"Error loading data from {filepath}: {e}")
         return None
 
-# --- Main App ---
+                # --- Main App ---
 # Set page configuration with wider layout and custom title/icon
 st.set_page_config(
     page_title="Indonesian Food Price Predictor",
@@ -135,6 +135,28 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+# Initialize session state for storing prediction results
+if 'has_predicted' not in st.session_state:
+    st.session_state.has_predicted = False
+if 'prediction_value' not in st.session_state:
+    st.session_state.prediction_value = None
+if 'last_actual_value' not in st.session_state:
+    st.session_state.last_actual_value = None
+if 'last_actual_date' not in st.session_state:
+    st.session_state.last_actual_date = None
+if 'pred_date' not in st.session_state:
+    st.session_state.pred_date = None
+if 'historical_data' not in st.session_state:
+    st.session_state.historical_data = None
+if 'plot_df' not in st.session_state:
+    st.session_state.plot_df = None
+if 'multi_day_predictions' not in st.session_state:
+    st.session_state.multi_day_predictions = None
+if 'selected_location' not in st.session_state:
+    st.session_state.selected_location = None
+if 'selected_commodity' not in st.session_state:
+    st.session_state.selected_commodity = None
 
 # Add custom CSS for better visual appearance
 st.markdown("""
@@ -246,6 +268,18 @@ if df_wide is not None:
         use_container_width=True,
         help="Click to predict the price for the next available day"
     )
+    
+    # Function to save prediction results to session state
+    def save_prediction_to_state(prediction_value, last_actual_value, last_actual_date, pred_date, historical_data, plot_df, selected_location, selected_commodity):
+        st.session_state.has_predicted = True
+        st.session_state.prediction_value = prediction_value
+        st.session_state.last_actual_value = last_actual_value
+        st.session_state.last_actual_date = last_actual_date
+        st.session_state.pred_date = pred_date
+        st.session_state.historical_data = historical_data
+        st.session_state.plot_df = plot_df
+        st.session_state.selected_location = selected_location
+        st.session_state.selected_commodity = selected_commodity
     
     # Information box in sidebar
     with st.sidebar.expander("ℹ️ How accurate are predictions?"):
