@@ -288,12 +288,24 @@ if df_wide is not None:
     st.sidebar.divider()
     
     # Make the predict button more prominent
-    predict_button = st.sidebar.button(
+    forecast_button = st.sidebar.button(
         f"🔮 Generate {'Multi-Day' if days_ahead > 1 else 'Next-Day'} Forecast", 
         type="primary",
         use_container_width=True,
         help=f"Click to predict prices for the next {days_ahead} day(s)"
     )
+    
+    # Clear prediction state if location or commodity changes
+    current_selection = f"{selected_location}_{selected_commodity}"
+    if 'last_selection' in st.session_state and st.session_state.last_selection != current_selection:
+        # Clear previous predictions when selection changes
+        if 'has_predicted' in st.session_state:
+            st.session_state.has_predicted = False
+        if 'multi_day_predictions' in st.session_state:
+            st.session_state.multi_day_predictions = None
+    
+    # Update last selection
+    st.session_state.last_selection = current_selection
     
     # Function to save prediction results to session state
     def save_prediction_to_state(prediction_value, last_actual_value, last_actual_date, pred_date, historical_data, plot_df, selected_location, selected_commodity):
