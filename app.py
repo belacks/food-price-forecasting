@@ -258,15 +258,41 @@ if df_wide is not None:
         help="Select the food item you want to analyze"
     )
     
+    st.sidebar.markdown("### 🗓️ Forecast Horizon")
+    st.sidebar.caption("How many days into the future do you want to predict?")
+    
+    # Calculate reasonable date range (today plus 1-30 days)
+    today = pd.Timestamp.now().date()
+    min_date = today + pd.Timedelta(days=1)
+    max_date = today + pd.Timedelta(days=30)
+    
+    # Let user select a target date
+    forecast_end_date = st.sidebar.date_input(
+        "Select forecast end date:",
+        value=min_date,
+        min_value=min_date,
+        max_value=max_date,
+        help="The model will predict prices from tomorrow until this date"
+    )
+    
+    # Calculate how many days ahead to predict
+    days_ahead = (pd.Timestamp(forecast_end_date) - pd.Timestamp(today)).days
+    days_ahead = max(1, min(days_ahead, 30))  # Limit to between 1 and 30 days
+    
+    if days_ahead > 1:
+        st.sidebar.caption(f"Forecasting {days_ahead} days ahead")
+    else:
+        st.sidebar.caption("Single day forecast")
+    
     # Add a divider before the predict button
     st.sidebar.divider()
     
     # Make the predict button more prominent
     predict_button = st.sidebar.button(
-        "🔮 Generate Price Prediction", 
+        f"🔮 Generate {'Multi-Day' if days_ahead > 1 else 'Next-Day'} Forecast", 
         type="primary",
         use_container_width=True,
-        help="Click to predict the price for the next available day"
+        help=f"Click to predict prices for the next {days_ahead} day(s)"
     )
     
     # Function to save prediction results to session state
