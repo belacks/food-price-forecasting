@@ -470,7 +470,7 @@ if df_wide is not None:
             st.markdown(f"<div class='sub-header'>Price Prediction: {selected_commodity}</div>", unsafe_allow_html=True)
             st.caption(f"Location: {selected_location} | Prediction Generated: {pd.Timestamp.now().strftime('%d %B %Y, %H:%M')}")
             
-            if not forcast_button:
+            if not forecast_button:
                 # Show placeholder content when prediction hasn't been run
                 st.markdown("### ⏳ Ready for Prediction")
                 st.info("Click the '🔮 Generate Price Prediction' button in the sidebar to forecast the next available price.")
