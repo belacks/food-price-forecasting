@@ -497,9 +497,93 @@ if df_wide is not None:
                                 # Create an enhanced visualization
                                 fig_pred = go.Figure()
                                 
-                                # Add a light range area to show the prediction confidence interval (simulated)
-                                confidence_upper = prediction_value * 1.03  # Simulated 3% upper bound
-                                confidence_lower = prediction_value * 0.97  # Simulated 3% lower bound
+                                # Now let's add a date selector for multi-day predictions
+                                st.markdown("#### Multi-Day Forecast")
+                                st.markdown("Select a future date to predict prices until that date:")
+                                
+                                # Calculate reasonable date range (between 1 day and 30 days in the future)
+                                min_date = pred_date
+                                max_date = pred_date + pd.Timedelta(days=30)
+                                
+                                # Let user select a target date
+                                target_date = st.date_input(
+                                    "Select prediction end date:",
+                                    value=min_date.date(),
+                                    min_value=min_date.date(),
+                                    max_value=max_date.date()
+                                )
+                                
+                                # Convert to pandas timestamp for calculation
+                                target_date = pd.Timestamp(target_date)
+                                
+                                # Calculate how many days ahead to predict
+                                days_ahead = (target_date - pred_date).days + 1
+                                days_ahead = max(1, min(days_ahead, 30))  # Limit to between 1 and 30 days
+                                
+                                if days_ahead > 1:
+                                    st.info(f"Generating prediction for {days_ahead} days into the future. Note that accuracy decreases with longer forecast horizons.")
+                                    
+                                    # Show a progress bar for multi-day predictions
+                                    multi_day_progress = st.progress(0)
+                                    
+                                    # Function to perform multi-day prediction
+                                    def predict_multiple_days(initial_sequence, days, scaler, model):
+                                        """Predict multiple days ahead recursively."""
+                                        # Make a copy of the initial sequence to avoid modifying the original
+                                        sequence = initial_sequence.copy()
+                                        predictions = []
+                                        dates = []
+                                        
+                                        # Get the last date from the original sequence
+                                        last_date = plot_df.index[-1]
+                                        
+                                        for i in range(days):
+                                            # Update progress bar
+                                            multi_day_progress.progress((i + 1) / days)
+                                            
+                                            # Prepare the sequence for prediction (scale and reshape)
+                                            sequence_scaled = scaler.transform(sequence)
+                                            sequence_reshaped = sequence_scaled.reshape(1, LOOK_BACK, 1)
+                                            
+                                            # Make prediction
+                                            pred_scaled = model.predict(sequence_reshaped, verbose=0)
+                                            pred_value = scaler.inverse_transform(pred_scaled)[0, 0]
+                                            
+                                            # Add one day to last date
+                                            next_date = last_date + pd.Timedelta(days=i+1)
+                                            
+                                            # Store the prediction and date
+                                            predictions.append(pred_value)
+                                            dates.append(next_date)
+                                            
+                                            # Update sequence for next prediction (remove oldest, add newest)
+                                            sequence = np.vstack([sequence[1:], [[pred_value]]])
+                                            
+                                        return pd.DataFrame({'Price': predictions}, index=dates)
+                                    
+                                    # Make multi-day prediction
+                                    multi_day_predictions = predict_multiple_days(
+                                        last_known_data.values, 
+                                        days_ahead,
+                                        scaler,
+                                        model
+                                    )
+                                    
+                                    # For visualization
+                                    pred_df = multi_day_predictions
+                                
+                                # Add confidence intervals as shaded area (wider for longer forecasts)
+                                confidence_intervals = []
+                                for i, (idx, row) in enumerate(pred_df.iterrows()):
+                                    # Increase uncertainty for days further in the future
+                                    uncertainty_factor = 0.03 + (i * 0.005)  # Starts at 3%, increases by 0.5% per day
+                                    confidence_intervals.append({
+                                        'date': idx,
+                                        'lower': row['Price'] * (1 - uncertainty_factor),
+                                        'upper': row['Price'] * (1 + uncertainty_factor)
+                                    })
+                                
+                                ci_df = pd.DataFrame(confidence_intervals)
                                 
                                 # Add the historical line
                                 fig_pred.add_trace(go.Scatter(
@@ -511,56 +595,133 @@ if df_wide is not None:
                                     marker=dict(size=6)
                                 ))
                                 
-                                # Add the prediction point
+                                # Add the prediction line
                                 fig_pred.add_trace(go.Scatter(
                                     x=pred_df.index, 
                                     y=pred_df['Price'], 
-                                    mode='markers', 
+                                    mode='lines+markers', 
                                     name='Predicted Price',
-                                    marker=dict(color='#D32F2F', size=12, symbol='star')
+                                    line=dict(color='#D32F2F', width=2, dash='dot'),
+                                    marker=dict(color='#D32F2F', size=8, symbol='circle')
                                 ))
                                 
-                                # Add confidence interval
+                                # Add shaded confidence interval
                                 fig_pred.add_trace(go.Scatter(
-                                    x=[pred_date, pred_date],
-                                    y=[confidence_lower, confidence_upper],
-                                    mode='lines',
-                                    line=dict(color='rgba(255, 0, 0, 0.2)', width=8),
-                                    name='Prediction Range (±3%)'
+                                    x=ci_df['date'].tolist() + ci_df['date'].tolist()[::-1],
+                                    y=ci_df['upper'].tolist() + ci_df['lower'].tolist()[::-1],
+                                    fill='toself',
+                                    fillcolor='rgba(255,0,0,0.1)',
+                                    line=dict(color='rgba(255,0,0,0)'),
+                                    hoverinfo='skip',
+                                    showlegend=True,
+                                    name='Prediction Confidence Interval'
                                 ))
                                 
                                 # Update layout for better appearance
                                 fig_pred.update_layout(
-                                    title="Recent Price Trend with Next-Day Prediction",
+                                    title="Price Forecast" if days_ahead > 1 else "Next-Day Price Prediction",
                                     xaxis_title="Date",
                                     yaxis_title="Price (Rupiah)",
                                     hovermode="x unified",
                                     legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5),
-                                    height=400,
+                                    height=500,
                                     template="plotly_white",
                                     margin=dict(l=10, r=10, t=50, b=30)
                                 )
                                 
+                                # Add prediction summary table if multi-day prediction
+                                if days_ahead > 1:
+                                    st.markdown("#### Detailed Price Forecasts")
+                                    
+                                    # Create a readable summary table with key dates
+                                    summary_data = []
+                                    
+                                    # Add tomorrow's prediction
+                                    summary_data.append({
+                                        "Date": pred_df.index[0].strftime("%d %b %Y"),
+                                        "Predicted Price": f"Rp {pred_df['Price'].iloc[0]:,.0f}",
+                                        "Change from Today": f"{((pred_df['Price'].iloc[0] - last_actual_value) / last_actual_value) * 100:.2f}%"
+                                    })
+                                    
+                                    # Add a week ahead if available
+                                    if days_ahead >= 7:
+                                        week_idx = min(6, len(pred_df) - 1)  # Index 6 = 7 days (0-indexed)
+                                        summary_data.append({
+                                            "Date": pred_df.index[week_idx].strftime("%d %b %Y"),
+                                            "Predicted Price": f"Rp {pred_df['Price'].iloc[week_idx]:,.0f}",
+                                            "Change from Today": f"{((pred_df['Price'].iloc[week_idx] - last_actual_value) / last_actual_value) * 100:.2f}%"
+                                        })
+                                    
+                                    # Add the last prediction
+                                    if days_ahead > 1:
+                                        summary_data.append({
+                                            "Date": pred_df.index[-1].strftime("%d %b %Y"),
+                                            "Predicted Price": f"Rp {pred_df['Price'].iloc[-1]:,.0f}",
+                                            "Change from Today": f"{((pred_df['Price'].iloc[-1] - last_actual_value) / last_actual_value) * 100:.2f}%"
+                                        })
+                                    
+                                    # Display as a table
+                                    st.table(pd.DataFrame(summary_data))
+                                    
+                                    # Add download button for full prediction data
+                                    csv = pred_df.reset_index().rename(columns={'index': 'Date'}).to_csv(index=False)
+                                    st.download_button(
+                                        label="📥 Download Full Forecast Data (CSV)",
+                                        data=csv,
+                                        file_name=f"forecast_{selected_commodity}_{selected_location}_{pd.Timestamp.now().strftime('%Y%m%d')}.csv",
+                                        mime="text/csv",
+                                    )
+                                    
+                                    # Add trend analysis
+                                    last_prediction = pred_df['Price'].iloc[-1]
+                                    total_change = last_prediction - last_actual_value
+                                    percent_change = (total_change / last_actual_value) * 100
+                                    
+                                    trend_message = ""
+                                    if percent_change > 5:
+                                        trend_message = f"🔴 **Strong upward trend expected**: Price projected to increase by {percent_change:.1f}% over {days_ahead} days."
+                                    elif percent_change > 1:
+                                        trend_message = f"🟠 **Moderate upward trend expected**: Price projected to increase by {percent_change:.1f}% over {days_ahead} days."
+                                    elif percent_change > -1:
+                                        trend_message = f"🟢 **Stable price expected**: Price projected to change by only {percent_change:.1f}% over {days_ahead} days."
+                                    elif percent_change > -5:
+                                        trend_message = f"🔵 **Moderate downward trend expected**: Price projected to decrease by {abs(percent_change):.1f}% over {days_ahead} days."
+                                    else:
+                                        trend_message = f"🟣 **Strong downward trend expected**: Price projected to decrease by {abs(percent_change):.1f}% over {days_ahead} days."
+                                    
+                                    st.markdown("#### Price Trend Analysis")
+                                    st.markdown(trend_message)
+                                    
+                                    st.warning("⚠️ **Forecast Accuracy Notice**: Predictions become less reliable the further into the future they extend. Use long-term forecasts as general trend indicators rather than exact price points.")
+                                
                                 st.plotly_chart(fig_pred, use_container_width=True)
                                 
                                 # Add context about the prediction
-                                with st.expander("🔍 Understanding This Prediction"):
+                                with st.expander("🔍 Understanding These Predictions"):
                                     st.markdown("""
-                                    This prediction is generated using a Long Short-Term Memory (LSTM) neural network, 
+                                    These predictions are generated using a Long Short-Term Memory (LSTM) neural network, 
                                     a type of deep learning model specialized in time series forecasting.
                                     
                                     **How it works:**
                                     - The model analyzes the last 60 days of price data
                                     - It identifies patterns, trends, and seasonal factors
-                                    - It projects these patterns forward to estimate the next day's price
+                                    - It projects these patterns forward to estimate future prices
+                                    
+                                    **For multi-day forecasts:**
+                                    - The model predicts one day at a time
+                                    - Each prediction is fed back into the model to predict the next day
+                                    - This is known as recursive or iterative forecasting
                                     
                                     **Limitations:**
                                     - The model cannot account for unexpected events (weather disasters, policy changes)
                                     - Accuracy generally decreases the further into the future we predict
                                     - Market interventions or unusual volatility may reduce prediction accuracy
+                                    - Errors compound over time in multi-day forecasts
                                     
-                                    The red star indicates the predicted price point. The vertical red bar represents 
-                                    an approximate confidence interval (±3%).
+                                    **Visual Elements:**
+                                    - The red dotted line shows predicted prices
+                                    - The shaded area represents the confidence interval
+                                    - Note that the confidence interval widens over time to reflect increasing uncertainty
                                     """)
                                 
                             except Exception as pred_err:
