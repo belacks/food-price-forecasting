@@ -16,8 +16,8 @@ from datetime import datetime, date, timedelta # Import datetime
 # --- Konfigurasi ---
 MODELS_BASE_FOLDER = "multioutput-models" # Folder model/scaler
 DATA_FILE_PATH = 'data_pangan_jabodetabek_wide_imputed.parquet'
-MODEL_FILENAME_PATTERN = "model_multioutput30d_{safe_name}.keras"
-SCALER_FILENAME_PATTERN = "scaler_multioutput30d_{safe_name}.gz"
+MODEL_FILENAME_PATTERN = "model_multiout30d_{safe_name}.keras"
+SCALER_FILENAME_PATTERN = "scaler_multiout30d_{safe_name}.gz"
 LOOK_BACK = 60
 MAX_HORIZON = 30 # Batas prediksi maksimal
 
