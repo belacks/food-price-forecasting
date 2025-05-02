@@ -14,14 +14,14 @@ import time
 
 # --- Configuration ---
 # Folder containing the saved models and scalers (relative to app.py)
-MODELS_BASE_FOLDER = "models" # Make sure this folder exists in your repo/deployment
+MODELS_BASE_FOLDER = "multioutput-models" # Make sure this folder exists in your repo/deployment
 
 # Path to the main historical data file
 DATA_FILE_PATH = 'data_pangan_jabodetabek_wide_imputed.parquet'
 
 # Model/Scaler file naming pattern (MUST match how you saved them)
-MODEL_FILENAME_PATTERN = "model_univar_{safe_name}.keras"
-SCALER_FILENAME_PATTERN = "scaler_univar_{safe_name}.gz"
+MODEL_FILENAME_PATTERN = "model_multiout30d_{safe_name}.keras"
+SCALER_FILENAME_PATTERN = "scaler_multiout30d_{safe_name}.gz"
 
 # LSTM Model Configuration (MUST match the trained models)
 LOOK_BACK = 60 # The sequence length used during training
