@@ -14,7 +14,7 @@ import time
 
 # --- Configuration ---
 # Folder containing the saved models and scalers (relative to app.py)
-MODELS_BASE_FOLDER = "univariate_models_saved" # Make sure this folder exists in your repo/deployment
+MODELS_BASE_FOLDER = "models" # Make sure this folder exists in your repo/deployment
 
 # Path to the main historical data file
 DATA_FILE_PATH = 'data_pangan_jabodetabek_wide_imputed.parquet'
