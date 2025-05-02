@@ -14,7 +14,7 @@ import time
 from datetime import datetime, date, timedelta # Import datetime
 
 # --- Konfigurasi ---
-MODELS_BASE_FOLDER = "multioutput_models" # Folder model/scaler
+MODELS_BASE_FOLDER = "multioutput-models" # Folder model/scaler
 DATA_FILE_PATH = 'data_pangan_jabodetabek_wide_imputed.parquet'
 MODEL_FILENAME_PATTERN = "model_multioutput30d_{safe_name}.keras"
 SCALER_FILENAME_PATTERN = "scaler_multioutput30d_{safe_name}.gz"
