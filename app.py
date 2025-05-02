@@ -166,6 +166,7 @@ else:
     # Ambil data historis untuk target terpilih
     ts_data = df_wide[[target_column_name]].copy()
     ts_data.rename(columns={target_column_name: 'Harga Aktual'}, inplace=True)
+    last_actual_date = ts_data.index[-1]
     last_actual_value = ts_data.iloc[-1, 0]
 
     # --- Tab untuk Tampilan ---
